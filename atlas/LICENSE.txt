@@ -1,0 +1,25 @@
+ATLAS ANATÓMICO 3D — ATRIBUCIÓN Y LICENCIA
+==========================================
+
+Los archivos .glb y .json de esta carpeta son OBRAS DERIVADAS de:
+
+  1. Z-Anatomy — https://github.com/Z-Anatomy/Models-of-human-anatomy
+     © Gauthier Kervyn y colaboradores de Z-Anatomy.
+     Licencia: Creative Commons Atribución-CompartirIgual 4.0 Internacional (CC BY-SA 4.0)
+     https://creativecommons.org/licenses/by-sa/4.0/
+
+  2. BodyParts3D — © The Database Center for Life Science (DBCLS).
+     Los archivos originales indican: "Creative Commons Attribution-Share Alike 2.1 Japan".
+     La página oficial de la versión 4.0 indica: "CC Attribution 4.0 International".
+     (Aquí se aplica la condición más estricta: atribución y compartir igual.)
+     https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html
+
+  3. Nombres en latín/español: Terminologia Anatomica (tabla TA2 incluida en Z-Anatomy).
+  4. Definiciones en inglés: extractos de Wikipedia (CC BY-SA), incluidos en el atlas de Z-Anatomy.
+
+CAMBIOS REALIZADOS: las mallas se separaron por sistema, se convirtieron las curvas
+(vasos y nervios) a malla, se simplificaron (reducción de polígonos) y se comprimieron
+con Draco para su uso en la web. Se añadieron colores y traducciones al español.
+
+Estas obras derivadas se distribuyen bajo la MISMA licencia: CC BY-SA 4.0.
+No implican respaldo de los autores originales.
