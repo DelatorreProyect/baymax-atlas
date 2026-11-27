@@ -1441,13 +1441,13 @@ function addFemale(c,G,P,organs){
     mk('F_ovario'+side,'Ovario','Ovarium','Gónada femenina: produce los óvulos y las hormonas sexuales femeninas (estrógenos y progesterona).',S,0xf3a8c8,[sd*0.075,0.105,-0.012],[0.016,0.011,0.009],null,side);
     mk('F_trompa'+side,'Trompa uterina','Tuba uterina','Conducto que recoge el óvulo del ovario y lo lleva al útero; ahí suele ocurrir la fecundación.',tg([[sd*0.02,0.1,-0.005],[sd*0.045,0.125,-0.005],[sd*0.07,0.118,-0.008],[sd*0.078,0.1,-0.01]],0.004),0xf29cc0,null,null,null,side); }
 }
-function atlasDesc(m){ const b=(m.b||'').toLowerCase(); for(const [re,t] of SPD) if(re.test(b)) return {t,es:true}; return {t:m.d||'',es:false}; }
+function atlasDesc(m){ const b=(m.b||'').toLowerCase(); for(const [re,t] of SPD) if(re.test(b)) return {t,es:true}; return {t:m.d||'',es:!!m.x}; }
 function applyAtlasVis(c){ const iso=isoGroup[c.key]; for(const m of c.pickables){ const u=m.userData; m.visible=(sideMode==='both'||!u.side||u.side===sideMode)&&(!iso||u.grp===iso)&&(showFascia||!u.hid)&&(!u.sex||u.sex===sex); } }
 function pivotGroup(c,G,meshes){
   if(!meshes.length) return null; const b=new THREE.Box3(); meshes.forEach(m=>{ m.geometry.computeBoundingBox(); b.union(m.geometry.boundingBox); });
   const ctr=b.getCenter(V()), P=new THREE.Group(); P.position.copy(ctr); G.add(P); meshes.forEach(m=>{ P.add(m); m.position.set(-ctr.x,-ctr.y,-ctr.z); }); return P; }
 async function loadAtlasSystem(k,c){
-  const r=await fetch(ATLAS_BASE+k+'.json'); if(!r.ok) throw new Error('sin atlas');
+  const r=await fetch(ATLAS_BASE+k+'.json?v=es1'); if(!r.ok) throw new Error('sin atlas');
   const meta=await r.json(); const gltf=await glLoader().loadAsync(ATLAS_BASE+k+'.glb');
   const by={}; meta.forEach(m=>by[m.n]=m);
   const G=new THREE.Group(); G.scale.set(...bodyScale()); c.group.add(G); c.atlas=G; c.meta=meta;
@@ -1459,7 +1459,7 @@ async function loadAtlasSystem(k,c){
     const u=o.userData; u.organ=nm; u.sys=k; u.side=m.s; u.grp=m.g[1]||m.g[0]||''; if(k==='muscular'&&(/^(Fascia|Bursae|Tendon sheaths)/i.test(u.grp)||/fascia|bursa|sheath/i.test(m.b))) u.hid=true;
     c.pickables.push(o);
     const d=atlasDesc(m);
-    organs[nm]={n:(m.es||m.b)+(m.s?' ('+(m.s==='l'?'izq.':'der.')+')':''),la:m.la,d:d.t,es:d.es,g:m.g,b:m.b,side:m.s};
+    organs[nm]={n:(m.es||m.b)+(m.s?' ('+(m.s==='l'?'izq.':'der.')+')':''),la:m.la,d:d.t,es:d.es,x:m.x,g:m.g,b:m.b,side:m.s};
     if(k==='cardiovascular'&&m.g[1]==='Heart') heart.push(o);
     if(k==='respiratorio'&&/(^|\b)(lung|lobe of)/i.test(m.b)&&!/bronch|vessel|arter|vein|segment/i.test(m.b)) lungs.push(o);
   }
@@ -1487,7 +1487,7 @@ function setBusy(on){ const o=$('#island .o'); if(o) o.textContent=on?'· Cargan
 // origen e inserción de cada músculo
 let insCtx=null;
 async function ensureInsertions(){ if(insCtx!==null) return insCtx; insCtx=false;
-  try{ const meta=await (await fetch(ATLAS_BASE+'insercion.json')).json(); const gltf=await glLoader().loadAsync(ATLAS_BASE+'insercion.glb');
+  try{ const meta=await (await fetch(ATLAS_BASE+'insercion.json?v=es1')).json(); const gltf=await glLoader().loadAsync(ATLAS_BASE+'insercion.glb');
     const G=new THREE.Group(); G.scale.set(...bodyScale()); scene.add(G); const by={}; meta.forEach(m=>by[m.n]=m); const items=[];
     gltf.scene.traverse(o=>{ if(!o.isMesh) return; const m=by[o.userData.name||o.name]; if(!m) return; const kind=/\.o\d*[lr]$/.test(m.n)?'o':'e';
       o.material=new THREE.MeshBasicMaterial({color:kind==='o'?0x2f7bff:0xff3b30,side:THREE.DoubleSide,transparent:true,opacity:.95}); o.renderOrder=8; o.visible=false; o.raycast=()=>{}; o.removeFromParent(); G.add(o); items.push({o,b:m.b,s:m.s,kind}); });
@@ -1497,9 +1497,10 @@ async function updateInsertions(){ const on=selOrgan&&selOrgan.sys==='muscular'&
   const ic=await ensureInsertions(); if(!ic) return; const m=SYS.muscular.organs[selOrgan&&selOrgan.key]; ic.items.forEach(i=>i.o.visible=!!m&&i.b===m.b&&i.s===m.side); }
 // lista con grupos y buscador
 const gname=g=>GROUPS_ES[g]||g;
-function atlasListHTML(k){ const org=SYS[k].organs, q=atlasQuery.trim().toLowerCase(), groups=new Map(), sel=selOrgan&&selOrgan.sys===k?org[selOrgan.key]:null;
+const norm=t=>(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+function atlasListHTML(k){ const org=SYS[k].organs, q=atlasQuery.trim().toLowerCase(), qwords=norm(q).split(/\s+/).filter(Boolean).map(w=>w.length>4?w.replace(/(es|s)$/,''):w), groups=new Map(), sel=selOrgan&&selOrgan.sys===k?org[selOrgan.key]:null;
   for(const [key,v] of Object.entries(org)){ if(v.sex&&v.sex!==sex) continue; if(sideMode!=='both'&&v.side&&v.side!==sideMode) continue;
-    if(q&&!(v.n.toLowerCase().includes(q)||v.b.toLowerCase().includes(q)||(v.la||'').toLowerCase().includes(q))) continue;
+    if(q&&!qwords.every(w=>norm(v.n).includes(w)||norm(v.b).includes(w)||norm(v.la).includes(w)||norm(gname(v.g[1]||v.g[0]||'')).includes(w)||norm(v.d).includes(w))) continue;
     const g=v.g[1]||v.g[0]||'—'; if(!groups.has(g)) groups.set(g,[]); groups.get(g).push([key,v]); }
   if(!groups.size) return '<p class="body" style="margin:12px 4px">Sin resultados.</p>';
   let h=''; for(const [g,items] of [...groups].sort((a,b)=>gname(a[0]).localeCompare(gname(b[0])))){
@@ -1510,7 +1511,7 @@ function atlasListHTML(k){ const org=SYS[k].organs, q=atlasQuery.trim().toLowerC
     h+='</div>'; }
   return h; }
 function atlasCard(k){ const o=selOrgan&&selOrgan.sys===k?SYS[k].organs[selOrgan.key]:null;
-  return o?`<div class="organ"><div class="kicker">${o.la?esc(o.la):'Estructura'}</div><h4>${esc(o.n)}</h4><p>${esc(o.d||'Sin definición disponible.')}</p>${o.d&&!o.es?'<small style="color:var(--label3)">Definición de Wikipedia (inglés)</small>':''}${o.fem?'<small style="color:var(--label3)">Modelo simplificado (dibujo propio): las fuentes abiertas no incluyen el aparato genital femenino.</small>':''}${k==='muscular'?'<div class="legend"><span><i style="background:#2f7bff"></i>Origen</span><span><i style="background:#ff3b30"></i>Inserción</span></div>':''}</div>`:''; }
+  return o?`<div class="organ"><div class="kicker">${o.la?esc(o.la):'Estructura'}</div><h4>${esc(o.n)}</h4><p>${esc(o.d||'Sin definición disponible.')}</p>${o.d&&!o.es?'<small style="color:var(--label3)">Definición de Wikipedia (inglés)</small>':''}${o.x?'<small style="color:var(--label3)">Definición de Wikipedia (CC BY-SA), traducida al español</small>':''}${o.fem?'<small style="color:var(--label3)">Modelo simplificado (dibujo propio): las fuentes abiertas no incluyen el aparato genital femenino.</small>':''}${k==='muscular'?'<div class="legend"><span><i style="background:#2f7bff"></i>Origen</span><span><i style="background:#ff3b30"></i>Inserción</span></div>':''}</div>`:''; }
 function atlasPanel(k){
   const bil=Object.values(SYS[k].organs).some(v=>v.side);
   return `<div class="hdr">Cuerpo</div><div class="seg" style="margin-top:0">${[['baymax','Dentro de Baymax'],['human','Cuerpo humano']].map(([a,l])=>`<button data-body="${a}" class="${bodyMode===a?'on':''}">${l}</button>`).join('')}</div>
@@ -1942,7 +1943,7 @@ function loop(now){
   applySex();
   renderSide(); renderInsp(); renderBar(); renderIsland(); applySheet(sheet.state,{fly:false});
   controls.target.set(0,1.83,0); camera.position.set(0,2.0,fitDist(1.95)+2.5);
-  progress(1,'Listo'); window.__ready=true; window.__dbg={scene,camera,controls,geo};
+  progress(1,'Listo'); window.__ready=true; window.__dbg={scene,camera,controls,geo,renderer,composer,THREE,baymax,ctxs,PRset:v=>{composer.setPixelRatio(v);},plat,floor,setSystems,showSys,scanG,loop};
   requestAnimationFrame(loop);
   setTimeout(()=>{ $('#load').classList.add('hide');
     baymax.scale.set(0.92,0.6,0.92);
